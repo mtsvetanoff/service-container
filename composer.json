@@ -1,0 +1,22 @@
+{
+    "name": "mtsvetanoff/service-container",
+    "description": "A simple service container with autowiring capabilities",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Martin Tsvetanoff",
+            "email": "m.tsvetanoff@gmail.com",
+			"homepage": "http://tsvetanoff.com",
+			"role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "MTsvetanoff\\ServiceContainer\\": "src/"
+        }
+    }
+}
