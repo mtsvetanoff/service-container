@@ -15,6 +15,7 @@ class ServiceContainer {
 
 	# Properties
 	private $enableAutoWiring;
+	private $filterClassNames;
 	private $services = [];
 
 	/**
@@ -24,10 +25,11 @@ class ServiceContainer {
 	 *
 	 * @access public
 	 */
-	public function __construct($enableAutoWiring = true) {
+	public function __construct($enableAutoWiring = true, $filterClassNames = ['Interface', 'Abstract']) {
 
 		# Set properties
 		$this->enableAutoWiring = $enableAutoWiring;
+		$this->filterClassNames = $filterClassNames;
 	}
 
 	/**
@@ -44,13 +46,45 @@ class ServiceContainer {
 	public function get($name) {
 
 		# Search for the implementations of interfaces and abstract classes
-		$name = str_replace(['Interface', 'Abstract'], '', $name);
+		$name = str_replace($this->filterClassNames, '', $name);
 
-		# The class has already been initialized
-		if ($this->has($name)) return $this->services[$name];
+		# The class is inserted into the service container but it might not be initialized (ex: closures)
+		if ($this->has($name)) {
 
-		# The class has not been initialized and autowiring is disabled
-		else if (!$this->enableAutoWiring) throw new Exception('Service ' . $name . ' does not exist in the service container');
+			# Get service
+			$service = $this->services[$name];
+
+			# Closure
+			if ($service instanceof Closure) {
+
+				# Execute closure
+				$service = $service($this);
+
+				# Set service
+				$this->set($name, $service);
+			}
+
+			# Return service
+			return $service;
+		}
+
+		# The class does not exist in the service container but autowiring is enabled so we will try to create and autowire it
+		if ($this->enableAutoWiring) return $this->autowire($name);
+
+		# The class does not exist in the service container
+		throw new Exception('Class ' . $name . ' does not exist');
+	}
+
+	/**
+	 * Instantiate a class and autowire it
+	 *
+	 * @param string $name
+	 *
+	 * @return mixed
+	 *
+	 * @access private
+	 */
+	private function autowire($name) {
 
 		# Throw an exception if the class does not exist
 		if (!class_exists($name) AND !interface_exists($name)) throw new Exception('Class ' . $name . ' does not exist');
@@ -63,7 +97,7 @@ class ServiceContainer {
 
 		# Get class constructor
 		$constructor = $reflector->getConstructor();
-		
+
 		# The class has a constructor
 		if ($constructor) {
 		
@@ -86,7 +120,7 @@ class ServiceContainer {
 
 		# This is were we store the dependencies
 		$dependencies = [];
-		
+
 		# Loop over the constructor parameters
 		foreach ($params as $i => $param) {
 
@@ -99,21 +133,21 @@ class ServiceContainer {
 				# Store dependency
 				$dependencies[] = $this->get($class->getName());
 			}
-			
+
 			# The parameter does not have a type hint
 			else throw new Exception('Argument ' . $i . ' in class ' . $name . ' cannot be autowired');
 		}
 
 		# Instantiate service
 		$service = $reflector->newInstanceArgs($dependencies);
-		
+
 		# Set service
 		$this->set($name, $service);
-		
+
 		# Return service
 		return $service;
 	}
-	
+
 	/**
 	 * Returns true if the container can return an entry for the given identifier
 	 *
